@@ -1,5 +1,7 @@
 import os
+import sys
 import json
+import socket
 import requests
 from flask import Flask, request, Response, jsonify
 from dotenv import load_dotenv
@@ -12,8 +14,32 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-if not GROQ_API_KEY:
-    print("WARNING: GROQ_API_KEY is not set. Add it to your .env file.")
+# Configuration from environment variables
+PORT = int(os.environ.get("PORT", 3000))
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+
+
+def validate_startup():
+    """Validate all required dependencies and configurations before startup."""
+    
+    # Check GROQ_API_KEY
+    if not GROQ_API_KEY:
+        print("❌ ERROR: GROQ_API_KEY not set in .env file")
+        print("📋 Setup: cp .env.example .env && add your GROQ_API_KEY")
+        sys.exit(1)
+    
+    # Check port availability
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result = sock.connect_ex(("127.0.0.1", PORT))
+    sock.close()
+    
+    if result == 0:
+        print(f"❌ ERROR: Port {PORT} is already in use")
+        print(f"💡 Solution: Change PORT in .env or kill the process using port {PORT}")
+        sys.exit(1)
+    
+    print("✅ All validations passed!")
+    print(f"🚀 Starting server on port {PORT} (debug={DEBUG})")
 
 
 @app.route("/api/ai-solve", methods=["POST"])
@@ -64,4 +90,5 @@ def ai_solve():
 
 
 if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+    validate_startup()
+    app.run(port=PORT, debug=DEBUG)
